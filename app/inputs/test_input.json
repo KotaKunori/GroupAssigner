@@ -1,0 +1,58 @@
+{
+    "participants": [
+        {"name": "芦田 淳", "position": "Faculty", "lab": ["小尻智子"]},
+        {"name": "川 沙耶香", "position": "Bachelor", "lab": ["林佑樹", "瀬田和久"]},
+        {"name": "鍵谷 玲奈", "position": "Bachelor", "lab": ["林佑樹", "瀬田和久"]},
+        {"name": "帖佐 宗浩", "position": "Bachelor", "lab": ["赤倉貴子", "古池謙人"]},
+        {"name": "Pierret Robles Jean Paul", "position": "Bachelor", "lab": ["東本崇仁"]},
+        {"name": "松浦 碧", "position": "Master", "lab": ["林佑樹", "瀬田和久"]},
+        {"name": "江添 光城", "position": "Master", "lab": ["加藤直樹"]},
+        {"name": "角田 悠翔", "position": "Master", "lab": ["小尻智子"]},
+        {"name": "岸本 侑弥", "position": "Master", "lab": ["小尻智子"]},
+        {"name": "植田 昭夫", "position": "Master", "lab": ["平嶋宗"]},
+        {"name": "外崎 竣輔", "position": "Master", "lab": ["緒方広明"]},
+        {"name": "桒田 一真", "position": "Master", "lab": ["小尻智子"]},
+        {"name": "下仲 竜聖", "position": "Master", "lab": ["小尻智子"]},
+        {"name": "荒川 龍聖", "position": "Master", "lab": ["三井実"]},
+        {"name": "相川 野々香", "position": "Faculty", "lab": ["東本崇仁"]},
+        {"name": "森田 海", "position": "Faculty", "lab": ["池田満"]},
+        {"name": "古池 謙人", "position": "Faculty", "lab": ["東本崇仁", "赤倉貴子"]},
+        {"name": "油谷 知岐", "position": "Faculty", "lab": ["瀬田和久", "林佑樹"]},
+        {"name": "岩間 裕司", "position": "Faculty", "lab": ["池田満"]},
+        {"name": "山本 頼弥", "position": "Faculty", "lab": ["小西達裕"]},
+        {"name": "杉田 一樹", "position": "Doctoral", "lab": ["長谷川忍"]},
+        {"name": "茂木 誠拓", "position": "Doctoral", "lab": ["東本崇仁"]},
+        {"name": "滝井 健介", "position": "Doctoral", "lab": ["緒方広明"]},
+        {"name": "久乗 皓大", "position": "Doctoral", "lab": ["小尻智子"]},
+        {"name": "前田 新太郎", "position": "Doctoral", "lab": ["東本崇仁"]},
+        {"name": "渡邉 弘大", "position": "Doctoral", "lab": ["平嶋宗"]},
+        {"name": "加納 泰斗", "position": "Doctoral", "lab": ["緒方広明"]}
+    ],
+    "sessions": [
+        {
+            "group_num": 6,
+            "min": 4,
+            "max": 5
+        },
+        {
+            "group_num": 6,
+            "min": 4,
+            "max": 5
+        },
+        {
+            "group_num": 6,
+            "min": 4,
+            "max": 5
+        },
+        {
+            "group_num": 6,
+            "min": 4,
+            "max": 5
+        },
+        {
+            "group_num": 6,
+            "min": 4,
+            "max": 5
+        }
+    ]
+}
