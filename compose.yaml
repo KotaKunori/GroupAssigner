@@ -1,0 +1,13 @@
+services:
+  app:
+    platform: linux/amd64
+    build: .
+    container_name: group-assigner-app
+    working_dir: /usr/src
+    volumes:
+      - ./app:/usr/src/app
+      - ./results:/usr/src/results
+    environment:
+      - PYTHONPATH=/usr/src
+      - PYTHONUNBUFFERED=1
+    command: python -m app.main
