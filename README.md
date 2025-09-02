@@ -12,7 +12,7 @@
 
 ## 入力例（シンプル）
 
-`app/inputs/test_input.json` の最小構成はこれだけです。
+`app/inputs/input.json` の最小構成はこれだけです。
 
 ```json
 {
@@ -75,6 +75,7 @@ docker compose up --remove-orphans app
 ```
 app/
   main.py                              # エントリポイント（ユースケース実行・結果保存・レポート呼び出し）
+  inputs/                              # 入力ファイル (input.json)
   outputs/                             # 生成物出力先（result.json / MD / CSV）
   infrastructure_layer/
     domain_implementations/
@@ -99,7 +100,7 @@ app/
 2. 局所探索
    - 同一職位間の入替など、小規模な変更で評価値（平均高・分散低）改善を試行
 
-3. ハイブリッドGA（任意）
+3. GA
    - 既存ヒューリスティックで複数シードを生成して初期集団に投入
    - 交叉: グループごとの職位別目標人数を保ったまま、同職位のみで構成
    - 突然変異: 同職位同士のみ入れ替え（職位セーフ）

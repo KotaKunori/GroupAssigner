@@ -22,7 +22,7 @@ from .presentation_layer.output_formatter.result_postprocessor import add_distin
 def main() -> int:
     try:
         # 外部入力ファイルから読み込む
-        input_path = Path(__file__).parent / "inputs" / "test_input.json"
+        input_path = Path(__file__).parent / "inputs" / "input.json"
         with open(input_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         params = GetGroupsParamsConverter.convert_json_to_params(data)

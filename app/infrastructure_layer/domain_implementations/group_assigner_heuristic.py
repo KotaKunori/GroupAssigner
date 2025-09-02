@@ -227,31 +227,104 @@ class GroupAssignerHeuristic(GroupAssigner):
                     # プールから削除
                     pool.pop(best_idx)
                     need -= 1
-        # 余り（ターゲット未達やプールの残り）があれば、サイズ上限までラウンドロビンで充当
-        remaining = []
+        # ジグザグ配分で計算したターゲット数を厳密に守る
+        # 余りの参加者は、制約を満たす範囲で適切に割り当てる
         for pos in PositionType:
-            remaining.extend(position_groups[pos])
-        random.shuffle(remaining)
-        gi = 0
-        while remaining:
-            cand = remaining.pop()
-            # 次の空きグループを探す
-            attempts = 0
-            assigned = False
-            while attempts < len(groups):
-                gidx = gi % len(groups)
-                if len(groups[gidx]) < max_size and self._is_group_suitable_for_participant(cand, groups[gidx], used_pairs, lab_conflicts):
-                    groups[gidx].append(cand)
-                    self._update_conflicts(cand, groups[gidx], used_pairs, lab_conflicts)
-                    assigned = True
-                    gi = (gidx + 1) % len(groups)
-                    break
-                gi += 1
-                attempts += 1
-            if not assigned:
-                # どうしても入らない場合はサイズ最小のグループに追加
-                tgt = min(range(len(groups)), key=lambda i: len(groups[i]))
-                groups[tgt].append(cand)
+            remaining_participants = position_groups[pos]
+            if remaining_participants:
+                # 残りの参加者を制約を満たすグループに割り当て
+                for participant in remaining_participants:
+                    best_group_idx = self._find_best_group_for_remaining_participant(
+                        participant, groups, position_targets, used_pairs, lab_conflicts, max_size
+                    )
+                    if best_group_idx is not None:
+                        groups[best_group_idx].append(participant)
+                        self._update_conflicts(participant, groups[best_group_idx], used_pairs, lab_conflicts)
+                    else:
+                        # 制約を満たすグループが見つからない場合は、最小のグループに追加
+                        min_group_idx = min(range(len(groups)), key=lambda i: len(groups[i]))
+                        groups[min_group_idx].append(participant)
+    
+    def _find_best_group_for_remaining_participant(
+        self,
+        participant: Participant,
+        groups: List[List[Participant]],
+        position_targets: List[Dict[PositionType, int]],
+        used_pairs: Set[Tuple[str, str]],
+        lab_conflicts: Dict[str, int],
+        max_size: int
+    ) -> Optional[int]:
+        """
+        残りの参加者に最適なグループを見つける（ジグザグ配分の制約を考慮）
+        
+        Args:
+            participant: 割り当て対象の参加者
+            groups: グループリスト
+            position_targets: 各グループの職位ターゲット数
+            used_pairs: 既出ペアのセット
+            lab_conflicts: ラボ重複の回数
+            max_size: グループの最大サイズ
+            
+        Returns:
+            最適なグループのインデックス、見つからない場合はNone
+        """
+        best_group_idx = None
+        best_score = float('inf')
+        
+        for group_idx, group_participants in enumerate(groups):
+            # グループサイズの制約をチェック
+            if len(group_participants) >= max_size:
+                continue
+            
+            # ジグザグ配分の制約をチェック
+            if not self._is_group_suitable_for_zigzag_constraints(
+                participant, group_idx, position_targets, group_participants
+            ):
+                continue
+            
+            # 既出ペアとラボ重複の制約をチェック
+            if not self._is_group_suitable_for_participant(
+                participant, group_participants, used_pairs, lab_conflicts
+            ):
+                continue
+            
+            # スコア計算
+            score = self._calculate_group_score(
+                participant, group_participants, used_pairs, lab_conflicts,
+                0, max_size, True, True
+            )
+            
+            if score < best_score:
+                best_score = score
+                best_group_idx = group_idx
+        
+        return best_group_idx
+    
+    def _is_group_suitable_for_zigzag_constraints(
+        self,
+        participant: Participant,
+        group_idx: int,
+        position_targets: List[Dict[PositionType, int]],
+        group_participants: List[Participant]
+    ) -> bool:
+        """
+        ジグザグ配分の制約をチェック
+        
+        Args:
+            participant: 割り当て対象の参加者
+            group_idx: グループのインデックス
+            position_targets: 各グループの職位ターゲット数
+            group_participants: グループ内の参加者
+            
+        Returns:
+            制約を満たすかどうか
+        """
+        position = participant.get_position()
+        current_count = sum(1 for p in group_participants if p.get_position() == position)
+        target_count = position_targets[group_idx][position]
+        
+        # ターゲット数を超えないようにチェック
+        return current_count < target_count
     
     def _order_by_duplication_average(
         self,
@@ -479,6 +552,12 @@ class GroupAssignerHeuristic(GroupAssigner):
             # グループ総数と同数以上の博士がいるかどうかは、割当フェーズ全体の文脈が必要だが、
             # 近似として「既にこのグループに博士がいれば不可」とする（7グループ・7博士のケースを満たす）
             if doctoral_count >= 1:
+                return False
+        
+        # 教員の制約：各グループに教員は1名まで
+        if participant.get_position() == PositionType.FACULTY:
+            faculty_count = sum(1 for p in group_participants if p.get_position() == PositionType.FACULTY)
+            if faculty_count >= 1:
                 return False
 
         for existing_participant in group_participants:
