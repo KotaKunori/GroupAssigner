@@ -38,7 +38,15 @@ class GetGroupsParamsConverter:
                     raise AttributeNotFoundError("Attribute min not found in session")
                 if "max" not in session_dict or session_dict["max"] is None:
                     raise AttributeNotFoundError("Attribute max not found in session")
-                session = Session.create(group_num=session_dict["group_num"], min=session_dict["min"], max=session_dict["max"], participants=participants)
+                # 任意: position_targets を受け取りセッションに設定
+                position_targets = session_dict.get("position_targets") if isinstance(session_dict, dict) else None
+                session = Session.create(
+                    group_num=session_dict["group_num"],
+                    min=session_dict["min"],
+                    max=session_dict["max"],
+                    participants=participants,
+                    position_targets=position_targets,
+                )
                 sessions = sessions.add_session(session)
 
             program = Program.create(

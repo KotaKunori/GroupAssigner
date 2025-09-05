@@ -117,3 +117,47 @@ def generate_group_balance_tables(result_json_path: str, outputs_dir: Path) -> N
     print(f"📈 CSVテーブル: {csv_file}")
 
 
+def generate_session_group_matrix_csv(result_json_path: str, outputs_dir: Path) -> None:
+    """
+    セッションごとに、列=グループ(A,B,...)、行=メンバー名のCSVを出力する。
+    形式:
+    Session1\n
+    A,B,C,...\n
+    name1,name2,...\n
+    (空行)\n
+    Session2 ...
+    """
+    outputs_dir.mkdir(parents=True, exist_ok=True)
+    matrix_csv = outputs_dir / "session_groups_matrix.csv"
+
+    with open(result_json_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    sessions = data.get('program', [])
+
+    with open(matrix_csv, 'w', encoding='utf-8') as out:
+        for s_idx, session_groups in enumerate(sessions):
+            out.write(f"Session{s_idx + 1}\n")
+            # グループ列ヘッダ A,B,C,...
+            num_groups = len(session_groups)
+            headers = [chr(ord('A') + i) for i in range(num_groups)]
+            out.write(", ".join(headers) + "\n")
+
+            # 最大人数に合わせて行を埋める
+            max_rows = max((len(g) for g in session_groups), default=0)
+            for r in range(max_rows):
+                row = []
+                for g in session_groups:
+                    if r < len(g):
+                        row.append(_extract_participant_name(g[r]))
+                    else:
+                        row.append("")
+                out.write(", ".join(row) + "\n")
+
+            # セッション間の空行
+            if s_idx != len(sessions) - 1:
+                out.write("\n")
+
+    print(f"🧾 セッション別グループCSV: {str(matrix_csv)}")
+
+

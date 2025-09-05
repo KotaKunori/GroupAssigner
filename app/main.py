@@ -16,7 +16,7 @@ from .presentation_layer.factories.group_assignment_result_formatter_factory imp
 from .infrastructure_layer.domain_implementations.group_assigner_heuristic import GroupAssignerHeuristic
 from .domain_layer.services.evaluation_algorithm import AverageRepeatEvaluationAlgorithm
 from .application_layer.factories.get_groups_usecase_factory import GetGroupsUseCaseFactory
-from .presentation_layer.reporting.group_balance_reporter import generate_group_balance_tables
+from .presentation_layer.reporting.group_balance_reporter import generate_group_balance_tables, generate_session_group_matrix_csv
 from .presentation_layer.output_formatter.result_postprocessor import add_distinct_partners_stats
 
 def main() -> int:
@@ -78,8 +78,9 @@ def main() -> int:
         out_path = outputs_dir / "result.json"
         formatter.save_to_file(formatted_result, out_path)
         
-        # 保存した結果を使って共起テーブルを生成
+        # 保存した結果を使って共起テーブルとセッション別グループCSVを生成
         generate_group_balance_tables(str(out_path), outputs_dir)
+        generate_session_group_matrix_csv(str(out_path), outputs_dir)
         
         return 0
     except Exception as e:
