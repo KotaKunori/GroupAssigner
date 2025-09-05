@@ -83,9 +83,14 @@ class GroupAssignerHeuristic(GroupAssigner):
                 PositionType.BACHELOR: list(bachelor_participants),
             }
 
-            # まず各グループの目標サイズ（容量）を決定し、その容量内でジグザグに職位ターゲットを配分
+            # まず各グループの目標サイズ（容量）を決定し、その容量内で職位ターゲットを配分
             group_sizes = self._compute_group_sizes(total_participants, group_num)
-            position_targets = self._compute_position_targets_zigzag(session, group_sizes, position_groups)
+            
+            # position_targetsが指定されている場合はそれを使用、そうでなければジグザグ配分
+            if session.has_position_targets():
+                position_targets = session.get_position_targets_as_enum()
+            else:
+                position_targets = self._compute_position_targets_zigzag(session, group_sizes, position_groups)
 
             self._assign_by_targets(
                 groups=groups,

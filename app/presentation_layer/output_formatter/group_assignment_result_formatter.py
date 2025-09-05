@@ -20,6 +20,14 @@ class GroupAssignmentResultFormatter:
         # 各人が同じグループになった「異なる人の数」を集計
         partners_summary = self._distinct_partners_calculator.calculate_distinct_partners(groups)
         
+        # 詳細なパートナー統計を計算
+        partner_stats_raw = self._distinct_partners_calculator.calculate_partner_statistics(groups)
+        
+        # フォーマットを "distinct_partners/total_partners/duplicate_partners" に変換
+        partner_stats = {}
+        for name, stats in partner_stats_raw.items():
+            partner_stats[name] = f"{stats['distinct_partners']}/{stats['total_partners']}/{stats['duplicate_partners']}"
+        
         # プログラムの整形
         program_out = []
         for key, value in groups.items():
@@ -36,7 +44,8 @@ class GroupAssignmentResultFormatter:
             "evaluation": {
                 "avg_repeat_per_person": evaluation_score,
                 "theoretical_min_avg_repeat": theo_min,
-                "distinct_partners_per_person": partners_summary
+                "distinct_partners_per_person": partners_summary,
+                "partner_statistics": partner_stats
             }
         }
     

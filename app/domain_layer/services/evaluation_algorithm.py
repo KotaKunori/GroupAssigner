@@ -106,3 +106,57 @@ class DistinctPartnersCalculator:
         for pid, others in mates.items():
             result[id_to_name.get(pid, pid)] = len(others)
         return result
+    
+    @staticmethod
+    def calculate_partner_statistics(groups_dict: Dict[int, Groups]) -> Dict[str, Dict[str, int]]:
+        """各人のパートナー統計を計算（重複含む総数、重複した人の総数、異なる人の数）"""
+        # 参加者ID -> 参加者名
+        id_to_name: Dict[str, str] = {}
+        # 参加者ID -> 同席した相手ID集合（重複なし）
+        distinct_mates: Dict[str, set[str]] = {}
+        # 参加者ID -> 同席した相手IDリスト（重複あり）
+        total_mates: Dict[str, list[str]] = {}
+        # 参加者ID -> 重複した相手ID集合
+        duplicate_mates: Dict[str, set[str]] = {}
+        
+        for _, session_groups in groups_dict.items():
+            for group in session_groups:
+                ids = []
+                for p in group.get_participants():
+                    pid = p.get_id().as_str()
+                    id_to_name[pid] = p.get_name().as_str()
+                    distinct_mates.setdefault(pid, set())
+                    total_mates.setdefault(pid, [])
+                    duplicate_mates.setdefault(pid, set())
+                    ids.append(pid)
+                
+                # 同一グループ内のペアを記録
+                for i in range(len(ids)):
+                    for j in range(len(ids)):
+                        if i == j:
+                            continue
+                        mate_id = ids[j]
+                        distinct_mates[ids[i]].add(mate_id)
+                        total_mates[ids[i]].append(mate_id)
+        
+        # 重複した相手を特定
+        for pid, mate_list in total_mates.items():
+            mate_counts = {}
+            for mate_id in mate_list:
+                mate_counts[mate_id] = mate_counts.get(mate_id, 0) + 1
+            # 2回以上一緒になった相手を重複として記録
+            for mate_id, count in mate_counts.items():
+                if count > 1:
+                    duplicate_mates[pid].add(mate_id)
+        
+        # 結果を構築
+        result: Dict[str, Dict[str, int]] = {}
+        for pid in distinct_mates.keys():
+            name = id_to_name.get(pid, pid)
+            result[name] = {
+                "distinct_partners": len(distinct_mates[pid]),
+                "total_partners": len(total_mates[pid]),
+                "duplicate_partners": len(duplicate_mates[pid])
+            }
+        
+        return result

@@ -96,7 +96,7 @@ class GroupAssignerHybridGA(GroupAssigner):
     def _make_heuristic_seeds(self, program: Program, num: int) -> List[Dict[int, Groups]]:
         seeds: List[Dict[int, Groups]] = []
         for i in range(num):
-            random.seed(i * 101 + 7)
+            random.seed(int(time.time() * 1000 + i) % 2**32)
             heur = GroupAssignerHeuristic(max_iterations=self.heuristic_iterations)
             seeds.append(heur.assign_groups(program))
         return seeds
@@ -106,7 +106,7 @@ class GroupAssignerHybridGA(GroupAssigner):
         """大きいほど良い。サイズ違反のない範囲で、ペア再会の少なさ・均等性・ラボ重複の少なさを評価。"""
         W_SIZE = 1_000_000
         W_PAIR = 100
-        W_SPREAD = 1_000  # 分散を強めに抑制
+        W_SPREAD = 300  # 分散を強めに抑制
         W_RANGE = 300   # 最大-最小の偏りも抑制
         W_LAB = 5
 

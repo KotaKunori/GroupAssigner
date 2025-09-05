@@ -30,12 +30,12 @@ def main() -> int:
         # アルゴリズムの選択（コメントアウトを変更して切り替え）
         # 1. ヒューリスティック + GA ハイブリッド（推奨）
         group_assigner = GroupAssignerHybridGA(
-            num_heuristic_seeds=10,
-            generations=500,
-            population_size=40,
-            mutation_rate=0.08,
-            time_budget_seconds=3.0,
-            heuristic_iterations=200,
+            num_heuristic_seeds=20,
+            generations=1000,
+            population_size=60,
+            mutation_rate=0.05,
+            time_budget_seconds=10.0,
+            heuristic_iterations=300,
         )
         # 2. ヒューリスティック
         # group_assigner = GroupAssignerHeuristic(max_iterations=1000)
