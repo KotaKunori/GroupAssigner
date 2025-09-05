@@ -3,7 +3,8 @@
 参加者を複数セッション・複数グループへ公平に割り当てるツールです。ヒューリスティックで初期解を生成し、必要に応じてハイブリッドGA（Heuristic + GA）で最適化します。出力として JSON の結果および共起（同じグループになった回数）テーブルを Markdown/CSV で生成します。
 
 ### 特徴
-- 職位（Faculty/Doctoral/Master/Bachelor）ごとの受け入れ枠を、A→…→G→G→…→A→A…のジグザグ配分で事前計算し均等化（容量 `min/max` を尊重）
+- 職位（Faculty/Doctoral/Master/Bachelor）ごとの受け入れ枠を、`position_targets`で指定された目標配分に設定
+  - `position_targets`が指定されていない場合はA→…→G→G→…→A→A…のジグザグ配分で事前計算し均等化（容量 `min/max` を尊重）
 - セッション設定の `group_num`・`min`・`max` に従ってグループを生成
 - 公平性（全セッション横断の共起人数の分散・レンジ）をハイブリッドGAの評価関数で抑制
 - 実行時に共起テーブル（Markdown/CSV）を自動生成
@@ -23,8 +24,24 @@
     {"name": "P04", "position": "Master",   "lab": ["LabB"]}
   ],
   "sessions": [
-    {"group_num": 2, "min": 2, "max": 3},
-    {"group_num": 2, "min": 2, "max": 3}
+    {
+      "group_num": 2, 
+      "min": 2, 
+      "max": 3,
+      "position_targets": [
+        {"Faculty": 1, "Doctoral": 1, "Master": 0, "Bachelor": 0},
+        {"Faculty": 0, "Doctoral": 0, "Master": 1, "Bachelor": 1}
+      ]
+    },
+    {
+      "group_num": 2, 
+      "min": 2, 
+      "max": 3,
+      "position_targets": [
+        {"Faculty": 1, "Doctoral": 1, "Master": 0, "Bachelor": 0},
+        {"Faculty": 0, "Doctoral": 0, "Master": 1, "Bachelor": 1}
+      ]
+    }
   ]
 }
 ```
@@ -33,6 +50,7 @@
 - `position` は `Faculty | Doctoral | Master | Bachelor` のいずれか。
 - `lab` は指導教員名(文字列)の配列（空配列も可）。
 - 参加者は全セッション共通、各セッションのグループ数/下限/上限は `sessions` で指定します。
+- `position_targets` は各グループの職位別目標人数を指定（オプション）。指定しない場合は職位の均等配分を行います。
 
 ---
 
