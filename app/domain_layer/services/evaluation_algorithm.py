@@ -160,3 +160,55 @@ class DistinctPartnersCalculator:
             }
         
         return result
+    
+    @staticmethod
+    def calculate_lab_overlap_statistics(groups_dict: Dict[int, Groups]) -> Dict[str, Dict[str, int]]:
+        """各人のラボ重複統計を計算（同ラボ出身者との同席回数）"""
+        # 参加者ID -> 参加者名
+        id_to_name: Dict[str, str] = {}
+        # 参加者ID -> 参加者のラボ
+        id_to_labs: Dict[str, set[str]] = {}
+        # 参加者ID -> 同席した同ラボ出身者の回数
+        lab_overlap_count: Dict[str, int] = {}
+        
+        # まず参加者の情報を収集
+        for _, session_groups in groups_dict.items():
+            for group in session_groups:
+                for p in group.get_participants():
+                    pid = p.get_id().as_str()
+                    id_to_name[pid] = p.get_name().as_str()
+                    id_to_labs[pid] = set(p.get_lab())
+                    lab_overlap_count.setdefault(pid, 0)
+        
+        # 各セッションでラボ重複をカウント
+        for _, session_groups in groups_dict.items():
+            for group in session_groups:
+                participants = list(group.get_participants())
+                # 各ペアについてラボ重複をチェック
+                for i in range(len(participants)):
+                    for j in range(i + 1, len(participants)):
+                        p1 = participants[i]
+                        p2 = participants[j]
+                        pid1 = p1.get_id().as_str()
+                        pid2 = p2.get_id().as_str()
+                        
+                        # 共通のラボがあるかチェック
+                        labs1 = set(p1.get_lab())
+                        labs2 = set(p2.get_lab())
+                        common_labs = labs1 & labs2
+                        
+                        if common_labs:
+                            # 共通ラボがある場合、重複回数をカウント
+                            lab_overlap_count[pid1] += 1
+                            lab_overlap_count[pid2] += 1
+        
+        # 結果を構築
+        result: Dict[str, Dict[str, int]] = {}
+        for pid in lab_overlap_count.keys():
+            name = id_to_name.get(pid, pid)
+            result[name] = {
+                "lab_overlap_count": lab_overlap_count[pid],
+                "total_lab_members": len([p for p in id_to_labs[pid] if p])  # 空でないラボの数
+            }
+        
+        return result

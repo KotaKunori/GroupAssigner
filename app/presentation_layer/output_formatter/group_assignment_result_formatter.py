@@ -28,6 +28,9 @@ class GroupAssignmentResultFormatter:
         for name, stats in partner_stats_raw.items():
             partner_stats[name] = f"{stats['distinct_partners']}/{stats['total_partners']}/{stats['duplicate_partners']}"
         
+        # ラボ重複統計を計算
+        lab_overlap_stats = self._distinct_partners_calculator.calculate_lab_overlap_statistics(groups)
+        
         # プログラムの整形
         program_out = []
         for key, value in groups.items():
@@ -45,7 +48,8 @@ class GroupAssignmentResultFormatter:
                 "avg_repeat_per_person": evaluation_score,
                 "theoretical_min_avg_repeat": theo_min,
                 "distinct_partners_per_person": partners_summary,
-                "partner_statistics": partner_stats
+                "partner_statistics": partner_stats,
+                "lab_overlap_statistics": lab_overlap_stats
             }
         }
     
@@ -54,6 +58,13 @@ class GroupAssignmentResultFormatter:
         output = json.dumps(result, ensure_ascii=False, indent=2)
         output += f"\n評価値(avg_repeat_per_person): {result['evaluation']['avg_repeat_per_person']}"
         output += f"\n理論最小値(theoretical_min_avg_repeat): {result['evaluation']['theoretical_min_avg_repeat']}"
+        
+        # ラボ重複統計の要約
+        lab_stats = result['evaluation']['lab_overlap_statistics']
+        total_overlaps = sum(stats['lab_overlap_count'] for stats in lab_stats.values())
+        avg_overlaps = total_overlaps / len(lab_stats) if lab_stats else 0
+        output += f"\nラボ重複統計: 総数={total_overlaps}, 平均={avg_overlaps:.2f}"
+        
         return output
     
     def save_to_file(self, result: Dict[str, Any], file_path: Path) -> None:
