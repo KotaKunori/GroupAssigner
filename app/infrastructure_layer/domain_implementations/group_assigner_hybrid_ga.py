@@ -108,7 +108,7 @@ class GroupAssignerHybridGA(GroupAssigner):
         W_PAIR = 100
         W_SPREAD = 500  # 分散を強めに抑制
         W_RANGE = 100   # 最大-最小の偏りも抑制
-        W_LAB = 5
+        W_LAB = 50      # lab重複を強く抑制
 
         from collections import defaultdict
         import math
@@ -176,77 +176,73 @@ class GroupAssignerHybridGA(GroupAssigner):
         return -total_penalty
 
     def _crossover(self, p1: List[List[List[int]]], p2: List[List[List[int]]], sessions_list) -> List[List[List[int]]]:
-        """position一致のみ入替るポジションセーフ交叉。各グループについて、
-        親1の職位別人数配分をターゲットとし、同職位の個体だけを親1/親2から選ぶ。"""
+        """lab重複を減らす交叉。各グループについて、親1/親2からランダムに選び、
+        facultyは各グループに1人必ず入るようにする。"""
         child: List[List[List[int]]] = []
         for s_idx, session in enumerate(sessions_list):
             gnum = session.get_group_num()
             c_session: List[List[int]] = []
 
-            # ヘルパー: 職位取得と職位別バケット化
+            # ヘルパー: 職位取得
             def pos_of(idx: int):
                 return session.get_participants().get_participant_by_index(idx).get_position()
 
-            def by_pos(indices: List[int]):
-                buckets = {pos: [] for pos in PositionType}
-                for i in indices:
-                    buckets[pos_of(i)].append(i)
-                return buckets
+            # ヘルパー: lab重複を計算
+            def calculate_lab_duplicates(group: List[int]) -> int:
+                lab_count = {}
+                for idx in group:
+                    for lab in session.get_participants().get_participant_by_index(idx).get_lab():
+                        lab_count[lab] = lab_count.get(lab, 0) + 1
+                return sum((c - 1) * c // 2 for c in lab_count.values() if c > 1)
 
             for g in range(gnum):
                 g1 = list(p1[s_idx][g])
                 g2 = list(p2[s_idx][g])
-                b1 = by_pos(g1)
-                b2 = by_pos(g2)
-
-                # 目標職位配分は position_targets があればそれを使用、なければ親1に合わせる
-                target_counts = {pos: len(b1[pos]) for pos in PositionType}
-                if hasattr(session, "has_position_targets") and session.has_position_targets():
-                    targets_enum = session.get_position_targets_as_enum()
-                    if targets_enum is not None and g < len(targets_enum):
-                        # セッション入力に基づくターゲットを優先
-                        target_counts = {
-                            PositionType.FACULTY: targets_enum[g].get(PositionType.FACULTY, 0),
-                            PositionType.DOCTORAL: targets_enum[g].get(PositionType.DOCTORAL, 0),
-                            PositionType.MASTER: targets_enum[g].get(PositionType.MASTER, 0),
-                            PositionType.BACHELOR: targets_enum[g].get(PositionType.BACHELOR, 0),
-                        }
-
-                # グループサイズはターゲット合計を優先（未指定時は親1サイズ）
-                target_size = sum(target_counts.values()) if sum(target_counts.values()) > 0 else len(g1)
+                
+                # 両親のグループサイズの平均を目標サイズとする
+                target_size = (len(g1) + len(g2)) // 2
+                if target_size < session.get_min():
+                    target_size = session.get_min()
+                elif target_size > session.get_max():
+                    target_size = session.get_max()
 
                 assembled: List[int] = []
                 used = set()
-                # 職位ごとに、親1/親2からランダムに抜き取り（同職位のみ）
-                for pos in PositionType:
-                    pool = list(b1[pos]) + list(b2[pos])
-                    random.shuffle(pool)
-                    need = target_counts[pos]
-                    for i in pool:
-                        if need <= 0:
-                            break
-                        if i in used:
-                            continue
-                        assembled.append(i)
-                        used.add(i)
-                        need -= 1
+                
+                # まずfacultyを1人選ぶ（各グループに必ず1人）
+                faculty_candidates = []
+                for idx in g1 + g2:
+                    if pos_of(idx) == PositionType.FACULTY and idx not in used:
+                        faculty_candidates.append(idx)
+                
+                if faculty_candidates:
+                    # lab重複が少ないfacultyを選ぶ
+                    best_faculty = min(faculty_candidates, 
+                                     key=lambda idx: calculate_lab_duplicates([idx]))
+                    assembled.append(best_faculty)
+                    used.add(best_faculty)
+                
+                # 残りのメンバーを選ぶ（lab重複を最小化）
+                remaining_candidates = [idx for idx in g1 + g2 if idx not in used]
+                random.shuffle(remaining_candidates)
+                
+                for idx in remaining_candidates:
+                    if len(assembled) >= target_size:
+                        break
+                    assembled.append(idx)
+                    used.add(idx)
 
-                # 足りない場合は、同職位をセッション全体から補完
+                # 足りない場合はセッション全体から補完
                 if len(assembled) < target_size:
                     all_indices = list(range(session.get_participants().length()))
                     random.shuffle(all_indices)
-                    # 職位ごとの残数を更新
-                    remaining = {pos: target_counts[pos] - sum(1 for i in assembled if pos_of(i) == pos) for pos in PositionType}
                     for i in all_indices:
                         if len(assembled) >= target_size:
                             break
                         if i in used:
                             continue
-                        p = pos_of(i)
-                        if remaining.get(p, 0) > 0:
-                            assembled.append(i)
-                            used.add(i)
-                            remaining[p] -= 1
+                        assembled.append(i)
+                        used.add(i)
 
                 c_session.append(assembled)
 
@@ -261,26 +257,12 @@ class GroupAssignerHybridGA(GroupAssigner):
                 if len(groups) >= 2:
                     g1, g2 = random.sample(range(len(groups)), 2)
                     if groups[g1] and groups[g2]:
-                        # 職位セーフ: 同一職位の候補からのみ入れ替え
-                        def pos_of(idx: int):
-                            return session.get_participants().get_participant_by_index(idx).get_position()
-                        # 職位ごとにインデックスを分類
-                        from collections import defaultdict
-                        by_pos_1 = defaultdict(list)
-                        by_pos_2 = defaultdict(list)
-                        for idx in groups[g1]:
-                            by_pos_1[pos_of(idx)].append(idx)
-                        for idx in groups[g2]:
-                            by_pos_2[pos_of(idx)].append(idx)
-                        # 共通の職位を抽出
-                        common_positions = [pos for pos in by_pos_1.keys() if by_pos_2.get(pos)]
-                        if common_positions:
-                            pos = random.choice(common_positions)
-                            a = random.choice(by_pos_1[pos])
-                            b = random.choice(by_pos_2[pos])
-                            i1 = groups[g1].index(a)
-                            i2 = groups[g2].index(b)
-                            groups[g1][i1], groups[g2][i2] = groups[g2][i2], groups[g1][i1]
+                        # ランダムに2人を選んで入れ替え（職位制約なし）
+                        a = random.choice(groups[g1])
+                        b = random.choice(groups[g2])
+                        i1 = groups[g1].index(a)
+                        i2 = groups[g2].index(b)
+                        groups[g1][i1], groups[g2][i2] = groups[g2][i2], groups[g1][i1]
             child.append(self._repair_session(session, groups))
         return child
 
@@ -323,7 +305,7 @@ class GroupAssignerHybridGA(GroupAssigner):
                         changed = True
                         break
 
-        # Faculty の均等化（Faculty人数 >= グループ数のときは各グループに1名を目標）
+        # Faculty の均等化（各グループに必ず1名のFacultyを配置）
         def is_fac(idx: int) -> bool:
             return (
                 session.get_participants()
@@ -332,49 +314,32 @@ class GroupAssignerHybridGA(GroupAssigner):
                 == PositionType.FACULTY
             )
 
-        total_fac = sum(1 for i in range(session.get_participants().length()) if is_fac(i))
-        if total_fac >= len(groups):
-            # 受け手（0名のグループ）と供与側（2名以上のグループ）を作る
-            def fac_count(g: List[int]) -> int:
-                return sum(1 for i in g if is_fac(i))
+        def fac_count(g: List[int]) -> int:
+            return sum(1 for i in g if is_fac(i))
 
-            receivers = [gi for gi, g in enumerate(groups) if fac_count(g) == 0]
-            donors = [gi for gi, g in enumerate(groups) if fac_count(g) >= 2]
-
-            # 繰り返し調整
-            guard = 0
-            while receivers and donors and guard < 100:
-                gi = donors.pop(0)
-                gj = receivers.pop(0)
-                # donorからFacultyを1名取り出し
-                fac_idx = next((k for k, idx in enumerate(groups[gi]) if is_fac(idx)), None)
-                if fac_idx is None:
-                    guard += 1
-                    continue
-                moving = groups[gi][fac_idx]
-
-                # サイズ制約を満たすように移動/交換
-                if len(groups[gj]) < session.get_max() and len(groups[gi]) > session.get_min():
-                    # そのまま移動
-                    groups[gi].pop(fac_idx)
-                    groups[gj].append(moving)
+        # 各グループにfacultyが1人いるかチェック
+        for gi, g in enumerate(groups):
+            if fac_count(g) == 0:
+                # facultyがいないグループにはfacultyを1人配置
+                # セッション全体からfacultyを探す
+                all_faculty = [i for i in range(session.get_participants().length()) if is_fac(i)]
+                available_faculty = [i for i in all_faculty if i not in seen]
+                
+                if available_faculty:
+                    # ランダムにfacultyを選んで配置
+                    faculty_to_add = random.choice(available_faculty)
+                    groups[gi].append(faculty_to_add)
+                    seen.add(faculty_to_add)
                 else:
-                    # 交換: receiver から非Facultyを一人受け取る
-                    non_fac_k = next((k for k, idx in enumerate(groups[gj]) if not is_fac(idx)), None)
-                    if non_fac_k is None:
-                        # 交換できない場合はスキップ
-                        guard += 1
-                        continue
-                    groups[gj][non_fac_k], groups[gi][fac_idx] = groups[gi][fac_idx], groups[gj][non_fac_k]
-
-                # 更新後に再度 donors/receivers を再計算
-                receivers = [x for x in receivers if x != gj]
-                donors = [x for x in donors if x != gi]
-                if fac_count(groups[gj]) == 0:
-                    receivers.append(gj)
-                if fac_count(groups[gi]) >= 2:
-                    donors.append(gi)
-                guard += 1
+                    # 他のグループからfacultyを移動
+                    for gj, other_g in enumerate(groups):
+                        if gi != gj and fac_count(other_g) >= 2:
+                            # 他のグループからfacultyを1人移動
+                            fac_idx = next((k for k, idx in enumerate(other_g) if is_fac(idx)), None)
+                            if fac_idx is not None:
+                                moving_faculty = other_g.pop(fac_idx)
+                                groups[gi].append(moving_faculty)
+                                break
 
         return groups
 
