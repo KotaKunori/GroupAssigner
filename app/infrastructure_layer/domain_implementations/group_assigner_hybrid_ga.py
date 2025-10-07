@@ -106,8 +106,8 @@ class GroupAssignerHybridGA(GroupAssigner):
         """大きいほど良い。サイズ違反のない範囲で、ペア再会の少なさ・均等性・ラボ重複の少なさを評価。"""
         W_SIZE = 1_000_000
         W_PAIR = 100
-        W_SPREAD = 300  # 分散を強めに抑制
-        W_RANGE = 300   # 最大-最小の偏りも抑制
+        W_SPREAD = 500  # 分散を強めに抑制
+        W_RANGE = 100   # 最大-最小の偏りも抑制
         W_LAB = 5
 
         from collections import defaultdict
@@ -196,12 +196,24 @@ class GroupAssignerHybridGA(GroupAssigner):
             for g in range(gnum):
                 g1 = list(p1[s_idx][g])
                 g2 = list(p2[s_idx][g])
-                target_size = len(g1)
                 b1 = by_pos(g1)
                 b2 = by_pos(g2)
 
-                # 目標職位配分は親1に合わせる
+                # 目標職位配分は position_targets があればそれを使用、なければ親1に合わせる
                 target_counts = {pos: len(b1[pos]) for pos in PositionType}
+                if hasattr(session, "has_position_targets") and session.has_position_targets():
+                    targets_enum = session.get_position_targets_as_enum()
+                    if targets_enum is not None and g < len(targets_enum):
+                        # セッション入力に基づくターゲットを優先
+                        target_counts = {
+                            PositionType.FACULTY: targets_enum[g].get(PositionType.FACULTY, 0),
+                            PositionType.DOCTORAL: targets_enum[g].get(PositionType.DOCTORAL, 0),
+                            PositionType.MASTER: targets_enum[g].get(PositionType.MASTER, 0),
+                            PositionType.BACHELOR: targets_enum[g].get(PositionType.BACHELOR, 0),
+                        }
+
+                # グループサイズはターゲット合計を優先（未指定時は親1サイズ）
+                target_size = sum(target_counts.values()) if sum(target_counts.values()) > 0 else len(g1)
 
                 assembled: List[int] = []
                 used = set()
